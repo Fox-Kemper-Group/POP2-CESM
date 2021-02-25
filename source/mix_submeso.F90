@@ -370,6 +370,9 @@
 
    real (r8), dimension(nx_block,ny_block) :: &
       ML_DEPTH,          &  ! mixed layer depth
+      H_TURB,            &  ! boundary layer depth , (ASB)
+      W_TURB,            &  ! turbulent convective velocity scale , (ASB)
+      U_TURB,            &  ! turbulent frictiona velocity scale , (ASB)
       HLS,               &  ! horizontal length scale
       WORK1, WORK2,      &  ! work arrays
       WORK3,             &
@@ -425,6 +428,21 @@
    if ( vmix_itype == vmix_type_kpp )  &
      ML_DEPTH(:,:) = HMXL(:,:,bid) 
    
+! boundary layer depth from vmix_kpp, (ASB)
+   H_TURB = zw(1)
+   if ( vmix_itype == vmix_type_kpp )  &
+     H_TURB(:,:) = KPP_HBLT(:,:,bid) 
+
+! w_* from vmix_kpp, (ASB)
+   W_TURB = c0
+   if ( vmix_itype == vmix_type_kpp )  &
+     W_TURB(:,:) = KPP_WSTAR(:,:,bid) 
+
+! u* from vmix_kpp, (ASB)
+   U_TURB = c0
+   if ( vmix_itype == vmix_type_kpp )  &
+     U_TURB(:,:) = KPP_USTAR(:,:,bid) 
+
 
    CONTINUE_INTEGRAL = .true.
    where ( KMT(:,:,bid) == 0 ) 
@@ -547,8 +565,9 @@
 
        WORK2 = sqrt_grav * WORK2 * TIME_SCALE(:,:,bid)
 
-       HLS = max ( WORK1, WORK2, hor_length_scale )
-
+     !  HLS = max ( WORK1, WORK2, hor_length_scale )
+!New HLS based on TTW (ASB). Note thie doesn't actually get used in the streamfunction         
+HLS = max(( 0.125_r8 * ( (U_TURB**3 + 0.132_r8 * W_TURB**3)**(0.667_r8) ) * (TIME_SCALE(:,:,bid)**2) / H_TURB), hor_length_scale)
      endwhere
 
    endif
@@ -574,8 +593,13 @@
          WORK2 = ( c1 - WORK3 )  &
                * ( c1 + ( 5.0_r8 / 21.0_r8 ) * WORK3 )
 
-         WORK1 = efficiency_factor * (ML_DEPTH**2) * WORK2  &
-                * TIME_SCALE(:,:,bid) / HLS
+!         WORK1 = efficiency_factor * (ML_DEPTH**2) * WORK2  &
+!                * TIME_SCALE(:,:,bid) / HLS
+
+! TTW streamfunction (ASB) 
+        WORK1 = 8.0_r8 * efficiency_factor * H_TURB * (ML_DEPTH**2) * WORK2  &
+                * sqrt(FCORT(:,:,bid)**2)  /  ( (U_TURB**3 + 0.132_r8 * W_TURB**3 + 0.01_r8 )**(0.667_r8) )
+
 
 !     in the following negative sign is omitted to be consistent with
 !     the GM implementation in hmix_gm subroutine. also, DXT and
