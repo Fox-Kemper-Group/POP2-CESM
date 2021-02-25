@@ -181,9 +181,9 @@
 !-----------------------------------------------------------------------
 
    efficiency_factor             = 0.07_r8
-   time_scale_constant           = 3.456e5_r8       ! 4 days, in seconds
+   time_scale_constant           = 0.0_r8         ! no tau (ASB)     ! 3.456e5_r8       ! 4 days, in seconds
    luse_const_horiz_len_scale    = .false.
-   hor_length_scale              = 5.0e5_r8         ! 5 km
+   hor_length_scale              = 0.0_r8 ! 0 no Lf min  (ASB)
 
    max_hor_grid_scale            = 111.0e5_r8       ! about 1 degree
 
@@ -370,6 +370,9 @@
 
    real (r8), dimension(nx_block,ny_block) :: &
       ML_DEPTH,          &  ! mixed layer depth
+      H_TURB,            &  ! boundary layer depth , (ASB)
+      W_TURB,            &  ! turbulent convective velocity scale , (ASB)
+      U_TURB,            &  ! turbulent frictiona velocity scale , (ASB)
       HLS,               &  ! horizontal length scale
       WORK1, WORK2,      &  ! work arrays
       WORK3,             &
@@ -425,6 +428,21 @@
    if ( vmix_itype == vmix_type_kpp )  &
      ML_DEPTH(:,:) = HMXL(:,:,bid) 
    
+! boundary layer depth from vmix_kpp, (ASB)
+   H_TURB = zw(1)
+   if ( vmix_itype == vmix_type_kpp )  &
+     H_TURB(:,:) = KPP_HBLT(:,:,bid) 
+
+! w_* from vmix_kpp, (ASB)
+   W_TURB = c0
+   if ( vmix_itype == vmix_type_kpp )  &
+     W_TURB(:,:) = KPP_WSTAR(:,:,bid) 
+
+! u* from vmix_kpp, (ASB)
+   U_TURB = c0
+   if ( vmix_itype == vmix_type_kpp )  &
+     U_TURB(:,:) = KPP_USTAR(:,:,bid) 
+
 
    CONTINUE_INTEGRAL = .true.
    where ( KMT(:,:,bid) == 0 ) 
@@ -547,8 +565,9 @@
 
        WORK2 = sqrt_grav * WORK2 * TIME_SCALE(:,:,bid)
 
-       HLS = max ( WORK1, WORK2, hor_length_scale )
-
+     !  HLS = max ( WORK1, WORK2, hor_length_scale )
+! new HLS from the TTW equation (ASB)
+        HLS = max(( 0.125_r8 * ( (U_TURB**3 + 0.132_r8 * W_TURB**3)**(0.667_r8) ) / ((FCORT(:,:,bid)**2) * H_TURB)), hor_length_scale)
      endwhere
 
    endif

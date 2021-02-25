@@ -66,8 +66,9 @@
       HMXL,               &! mixed layer depth
       HMXL_DR,            &! mixed layer depth with density criterion, QL, 150526
       KPP_HBLT,           &! boundary layer depth
-      BOLUS_SP             ! scaled eddy-induced (bolus) speed used in inertial
-                           !  mixing parameterization
+      BOLUS_SP,           &! scaled eddy-induced (bolus) speed used in inertial mixing parameterization
+      KPP_USTAR,          &! turbulent friction velocity (ASB)
+      KPP_WSTAR            ! turbulent convective velocity, momentum (ASB)
 
    real (r8), public ::   &
       bckgrnd_vdc2         ! variation in diffusivity
@@ -648,15 +649,19 @@
 
    allocate (HMXL     (nx_block,ny_block,nblocks_clinic), &
              HMXL_DR  (nx_block,ny_block,nblocks_clinic), & ! QL, 150526
-             KPP_HBLT (nx_block,ny_block,nblocks_clinic), &
+             KPP_HBLT (nx_block,ny_block,nblocks_clinic), &   
+             KPP_USTAR (nx_block,ny_block,nblocks_clinic),& ! ASB
+             KPP_WSTAR (nx_block,ny_block,nblocks_clinic),& ! ASB
              KPP_SRC  (nx_block,ny_block,km,nt,nblocks_clinic))
 
-   HMXL     = c0
-   HMXL_DR  = c0 ! QL, 150526
-   KPP_HBLT = c0
-   KPP_SRC  = c0
-   VDC      = c0
-   VVC      = c0
+   HMXL      = c0
+   HMXL_DR   = c0 ! QL, 150526
+   KPP_HBLT  = c0 
+   KPP_USTAR = c0 ! ASB
+   KPP_WSTAR = c0 ! ASB
+   KPP_SRC   = c0
+   VDC       = c0
+   VVC       = c0
 
 !-----------------------------------------------------------------------
 !
@@ -2147,6 +2152,8 @@
       call ugrid_to_tgrid(USTAR,WORK,bid)
    endif
 
+   KPP_USTAR(:,:,bid) = USTAR   ! ASB
+
 !-----------------------------------------------------------------------
 !
 !  compute density and expansion coefficients at surface
@@ -2753,6 +2760,8 @@
 
 
    BFSFC  = BFSFC + STABLE * eps ! ensures bfsfc never=0
+
+   KPP_WSTAR(:,:,bid) = WM   ! ASB, store WM in KPP_WSTAR
 
 !-----------------------------------------------------------------------
 !EOC
